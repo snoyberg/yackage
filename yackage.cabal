@@ -1,0 +1,32 @@
+Name:                yackage
+Version:             0.0.0
+Synopsis:            Personal Hackage replacement for testing new packages.
+Description:
+    This package installs a yackage executable that runs a simplistic hackage-like server. It allows you to upload packages produced via cabal sdist and install them via cabal. The trick is to add the yackage repository to your cabal config file, with a line such as:
+    .
+    remote-repo: yackage:http://localhost:3500/
+
+Homepage:            http://github.com/snoyberg/yackage
+License:             BSD3
+License-file:        LICENSE
+Author:              Michael Snoyman
+Maintainer:          michael@snoyman.com
+Category:            Distribution
+Build-type:          Simple
+Cabal-version:       >=1.6
+
+Executable yackage
+  Main-is:             yackage.hs
+  Build-depends:       base >= 4 && < 5
+                     , yesod >= 0.6 && < 0.7
+                     , Cabal
+                     , bytestring
+                     , text
+                     , zlib
+                     , tar
+                     , containers
+                     , directory
+  
+source-repository head
+  type:     git
+  location: git://github.com/snoyberg/yackage.git
