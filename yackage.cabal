@@ -11,7 +11,7 @@ License:             BSD3
 License-file:        LICENSE
 Author:              Michael Snoyman
 Maintainer:          michael@snoyman.com
-Category:            Distribution
+Category:            Distribution, Web, Yesod
 Build-type:          Simple
 Cabal-version:       >=1.6
 
