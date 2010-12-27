@@ -78,7 +78,9 @@ type Handler = GHandler Yackage Yackage
 getRootR :: Handler RepHtml
 getRootR = do
     ps <- getYesod >>= liftIO . readMVar . packages >>= return . Map.toList
-    defaultLayout [$hamlet|
+    defaultLayout $ do
+        setTitle "Yackage"
+        addHamlet [$hamlet|
 %h1 Yackage
 %form!method=post!enctype=multipart/form-data
     Upload a new file: $
