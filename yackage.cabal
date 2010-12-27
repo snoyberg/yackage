@@ -26,6 +26,8 @@ Executable yackage
                      , tar
                      , containers
                      , directory
+                     , data-object
+                     , data-object-yaml
   
 source-repository head
   type:     git

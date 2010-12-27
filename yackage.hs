@@ -22,14 +22,19 @@ import Data.Text.Lazy.Encoding (decodeUtf8With)
 import Data.Text.Encoding.Error (lenientDecode)
 import qualified Data.ByteString.Lazy as L
 import Data.Maybe (fromMaybe)
+import Data.Object
+import Data.Object.Yaml
+import Control.Monad (join)
 
 type CabalFile = FilePath
 type Tarball = FilePath
 
 data Yackage = Yackage
     { rootDir :: FilePath
-    , packages :: MVar (Map PackageName (Set Version))
+    , packages :: MVar PackageDB
     }
+
+type PackageDB = Map PackageName (Set Version)
 
 mkYesod "Yackage" [$parseRoutes|
 / RootR GET POST
@@ -161,10 +166,10 @@ main = do
                     (z, _):_ -> return z
             _ -> error "Usage: yackage [port number]"
     createDirectoryIfMissing True $ path ++ "/package"
-    let config = path ++ "/config"
+    let config = path ++ "/config.yaml"
     e <- doesFileExist config
     m <- if e
-            then read `fmap` readFile config
+            then parseConfig `fmap` join (decodeFile config)
             else return $ Map.empty
     m' <- liftIO $ newMVar m
     basicHandler port $ Yackage path m'
@@ -197,5 +202,28 @@ rebuildIndex ps = do
 
 writeConfig ps = do
     path <- rootDir `fmap` getYesod
-    let config = path ++ "/config"
-    liftIO $ writeFile config $ show ps
+    let config = path ++ "/config.yaml"
+    liftIO $ encodeFile config $ encodeConfig ps
+
+encodeConfig =
+    Mapping . map go . Map.toList
+  where
+    go (pn, vs) = (toSinglePiece pn, Sequence $ map go' $ Set.toList vs)
+    go' = Scalar . toSinglePiece
+
+parseConfig :: Object String String -> PackageDB
+parseConfig o = fromMaybe (error "Invalid config file") $ do
+    m <- fromMapping o
+    m' <- mapM go m
+    return $ Map.fromList m'
+  where
+    go :: (String, Object String String) -> Maybe (PackageName, Set Version)
+    go (name, vs) = do
+        Right name' <- return $ fromSinglePiece name
+        vs' <- fromSequence vs
+        vs'' <- mapM go' vs'
+        return (name', Set.fromList vs'')
+    go' s = do
+        s' <- fromScalar s
+        Right x <- return $ fromSinglePiece s'
+        return x
