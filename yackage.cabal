@@ -1,5 +1,5 @@
 Name:                yackage
-Version:             0.0.0
+Version:             0.0.1
 Synopsis:            Personal Hackage replacement for testing new packages.
 Description:
     This package installs a yackage executable that runs a simplistic hackage-like server. It allows you to upload packages produced via cabal sdist and install them via cabal. The trick is to add the yackage repository to your cabal config file, with a line such as:
@@ -28,6 +28,9 @@ Executable yackage
                      , directory
                      , data-object
                      , data-object-yaml
+                     , cmdargs
+                     , wai
+                     , wai-extra
   
 source-repository head
   type:     git

@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings, TypeFamilies, QuasiQuotes #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 import Yesod
 import Distribution.Package
 import Distribution.PackageDescription
@@ -24,7 +25,16 @@ import qualified Data.ByteString.Lazy as L
 import Data.Maybe (fromMaybe)
 import Data.Object
 import Data.Object.Yaml
-import Control.Monad (join)
+import Control.Monad (join, unless)
+import System.Console.CmdArgs
+import Network.Wai
+import Network.Wai.Handler.SimpleServer (run)
+
+data Args = Args
+    { port :: Int
+    , password :: Maybe String
+    , localhost :: Bool
+    } deriving (Show, Data, Typeable)
 
 type CabalFile = FilePath
 type Tarball = FilePath
@@ -32,6 +42,7 @@ type Tarball = FilePath
 data Yackage = Yackage
     { rootDir :: FilePath
     , packages :: MVar PackageDB
+    , ypassword :: Maybe String
     }
 
 type PackageDB = Map PackageName (Set Version)
@@ -82,15 +93,22 @@ type Handler = GHandler Yackage Yackage
 
 getRootR :: Handler RepHtml
 getRootR = do
+    y <- getYesod
     ps <- getYesod >>= liftIO . readMVar . packages >>= return . Map.toList
     defaultLayout $ do
         setTitle "Yackage"
         addHamlet [$hamlet|
 %h1 Yackage
 %form!method=post!enctype=multipart/form-data
-    Upload a new file: $
-    %input!type=file!name=file
-    %input!type=submit!value=Upload
+    %div
+        Upload a new file: $
+        %input!type=file!name=file
+    $maybe ypassword.y _
+        %div
+            Password: $
+            %input!type=password!name=password
+    %div
+        %input!type=submit!value=Upload
 %dl
     $forall ps p
         %dt $unPackageName.fst.p$
@@ -101,6 +119,12 @@ getRootR = do
 |]
 
 postRootR = do
+    y <- getYesod
+    case ypassword y of
+        Nothing -> return ()
+        Just p -> do
+            p' <- runFormPost' $ maybeStringInput "password"
+            unless (Just p == p') $ permissionDenied "Invalid password"
     rr <- getRequest
     (_, files) <- liftIO $ reqRequestBody rr
     content <-
@@ -156,15 +180,12 @@ getTarballR name = do
 
 main = do
     path <- getAppUserDataDirectory "yackage"
-    x <- getArgs
-    port <-
-        case x of
-            [] -> return 3500
-            [y] ->
-                case reads y of
-                    [] -> error $ "Invalid port: " ++ y
-                    (z, _):_ -> return z
-            _ -> error "Usage: yackage [port number]"
+    progname <- getProgName
+    args <- cmdArgsRun $ cmdArgsMode $ Args
+        { port = 3500 &= help "Port number"
+        , password = Nothing &= help "Optional password required to upload files"
+        , localhost = False &= help "Only allow connections from localhost?"
+        } &= program progname &= summary "Run a Yackage server"
     createDirectoryIfMissing True $ path ++ "/package"
     let config = path ++ "/config.yaml"
     e <- doesFileExist config
@@ -172,7 +193,16 @@ main = do
             then parseConfig `fmap` join (decodeFile config)
             else return $ Map.empty
     m' <- liftIO $ newMVar m
-    basicHandler port $ Yackage path m'
+    app <- toWaiApp $ Yackage path m' $ password args
+    let app' = if localhost args then onlyLocal app else app
+    putStrLn $ "Running Yackage on port " ++ show (port args)
+    run (port args) app'
+
+onlyLocal app req =
+    if remoteHost req `elem` ["127.0.0.1", "::1", "localhost"]
+        then app req
+        else return $ Response status403 [("Content-Type", "text/plain")]
+                    $ ResponseLBS "This Yackage server only talks to local clients"
 
 unPackageName (PackageName s) = s
 
