@@ -34,6 +34,7 @@ data Args = Args
     { port :: Int
     , password :: Maybe String
     , localhost :: Bool
+    , rootdir :: String
     } deriving (Show, Data, Typeable)
 
 type CabalFile = FilePath
@@ -185,15 +186,16 @@ main = do
         { port = 3500 &= help "Port number"
         , password = Nothing &= help "Optional password required to upload files"
         , localhost = False &= help "Only allow connections from localhost?"
+        , rootdir = path &= help "Root folder for Yackage config file and packages"
         } &= program progname &= summary "Run a Yackage server"
-    createDirectoryIfMissing True $ path ++ "/package"
-    let config = path ++ "/config.yaml"
+    createDirectoryIfMissing True $ rootdir args ++ "/package"
+    let config = rootdir args ++ "/config.yaml"
     e <- doesFileExist config
     m <- if e
             then parseConfig `fmap` join (decodeFile config)
             else return $ Map.empty
     m' <- liftIO $ newMVar m
-    app <- toWaiApp $ Yackage path m' $ password args
+    app <- toWaiApp $ Yackage (rootdir args) m' $ password args
     let app' = if localhost args then onlyLocal app else app
     putStrLn $ "Running Yackage on port " ++ show (port args)
     run (port args) app'
