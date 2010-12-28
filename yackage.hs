@@ -34,7 +34,7 @@ data Args = Args
     { port :: Int
     , password :: Maybe String
     , localhost :: Bool
-    , rootdir :: String
+    , rootdir :: Maybe String
     } deriving (Show, Data, Typeable)
 
 type CabalFile = FilePath
@@ -130,7 +130,7 @@ postRootR = do
     (_, files) <- liftIO $ reqRequestBody rr
     content <-
         case lookup "file" files of
-            Nothing -> notFound
+            Nothing -> error "No file upload found"
             Just fi -> return $ fileContent fi
     let entries = Tar.read $ decompress content
     let cabal =
@@ -180,24 +180,27 @@ getTarballR name = do
     return ()
 
 main = do
-    path <- getAppUserDataDirectory "yackage"
     progname <- getProgName
     args <- cmdArgsRun $ cmdArgsMode $ Args
         { port = 3500 &= help "Port number"
         , password = Nothing &= help "Optional password required to upload files"
         , localhost = False &= help "Only allow connections from localhost?"
-        , rootdir = path &= help "Root folder for Yackage config file and packages"
+        , rootdir = Nothing &= help "Root folder for Yackage config file and packages"
         } &= program progname &= summary "Run a Yackage server"
-    createDirectoryIfMissing True $ rootdir args ++ "/package"
-    let config = rootdir args ++ "/config.yaml"
+    path <-
+        case rootdir args of
+            Nothing -> getAppUserDataDirectory "yackage"
+            Just s -> return s
+    createDirectoryIfMissing True $ path ++ "/package"
+    let config = path ++ "/config.yaml"
     e <- doesFileExist config
     m <- if e
             then parseConfig `fmap` join (decodeFile config)
             else return $ Map.empty
     m' <- liftIO $ newMVar m
-    app <- toWaiApp $ Yackage (rootdir args) m' $ password args
+    app <- toWaiApp $ Yackage path m' $ password args
     let app' = if localhost args then onlyLocal app else app
-    putStrLn $ "Running Yackage on port " ++ show (port args)
+    putStrLn $ "Running Yackage on port " ++ show (port args) ++ ", rootdir: " ++ path
     run (port args) app'
 
 onlyLocal app req =
