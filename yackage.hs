@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings, TypeFamilies, QuasiQuotes #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE TemplateHaskell #-}
 import Yesod
 import Distribution.Package
 import Distribution.PackageDescription
