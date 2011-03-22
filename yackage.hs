@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings, TypeFamilies, QuasiQuotes #-}
-{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveDataTypeable, TemplateHaskell #-}
 import Yesod
 import Distribution.Package
 import Distribution.PackageDescription
@@ -48,7 +48,7 @@ data Yackage = Yackage
 
 type PackageDB = Map PackageName (Set Version)
 
-mkYesod "Yackage" [$parseRoutes|
+mkYesod "Yackage" [parseRoutes|
 / RootR GET POST
 /00-index.tar.gz IndexR GET
 /package/#String TarballR GET
@@ -98,7 +98,7 @@ getRootR = do
     ps <- getYesod >>= liftIO . readMVar . packages >>= return . Map.toList
     defaultLayout $ do
         setTitle "Yackage"
-        addHamlet [$hamlet|
+        addHamlet [hamlet|
 %h1 Yackage
 %form!method=post!enctype=multipart/form-data
     %div
