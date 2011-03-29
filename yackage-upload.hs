@@ -14,7 +14,7 @@ main = do
                 [x, y] -> (x, "", y)
                 [x, y, z] -> (x, y, z)
                 _ -> error "Usage: yackage-upload <url> [password] <file>"
-    req <- parseUrl url
+    req <- parseUrl $ S8.pack url
     body <- mkBody pass file
     let req' = req
             { method = "POST"
@@ -22,9 +22,9 @@ main = do
                 [ ("Content-Type", "multipart/form-data; boundary=" `S8.append` bound)
                 , ("Content-Length", S8.pack $ show $ L.length body)
                 ]
-            , requestBody = body
+            , requestBody = RequestBodyLBS body
             }
-    res <- httpLbs req'
+    res <- withManager $ httpLbs req'
     L.putStrLn $ responseBody res
 
 bound = "YACKAGEUPLOAD"

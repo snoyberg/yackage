@@ -1,11 +1,14 @@
 {-# LANGUAGE OverloadedStrings, TypeFamilies, QuasiQuotes #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 import Yesod.Core
 import Yesod.Dispatch
 import Yesod.Handler
 import Yesod.Widget
 import Yesod.Content
+import Yesod.Form
+import Yesod.Request
 import Text.Hamlet
 import Control.Monad.IO.Class (liftIO)
 import Distribution.Package
@@ -105,25 +108,25 @@ getRootR = do
     ps <- getYesod >>= liftIO . readMVar . packages >>= return . Map.toList
     defaultLayout $ do
         setTitle "Yackage"
-        addHamlet [$hamlet|
-%h1 Yackage
-%form!method=post!enctype=multipart/form-data
-    %div
-        Upload a new file: $
-        %input!type=file!name=file
-    $maybe ypassword.y _
-        %div
-            Password: $
-            %input!type=password!name=password
-    %div
-        %input!type=submit!value=Upload
-%dl
-    $forall ps p
-        %dt $unPackageName.fst.p$
-        %dd
-            $forall toAscList.snd.p v
-                %a!href=@(tarballR.fst.p).v@ $toSinglePiece.v$
-                \ $
+        addHamlet [$hamlet|\
+<h1>Yackage
+<form method="post" enctype="multipart/form-data">
+    <div>
+        \Upload a new file: 
+        <input type="file" name="file">
+    $maybe _ <- ypassword y
+        <div>
+            \Password: 
+            <input type="password" name="password">
+    <div>
+        <input type="submit" value="Upload">
+<dl>
+    $forall p <- ps
+        <dt>#{unPackageName (fst p)}
+        <dd>
+            $forall v <- toAscList (snd p)
+                <a href="@{tarballR (fst p) v}">#{toSinglePiece v}
+                \ 
 |]
 
 postRootR = do
@@ -133,8 +136,7 @@ postRootR = do
         Just p -> do
             p' <- runFormPost' $ maybeStringInput "password"
             unless (Just p == p') $ permissionDenied "Invalid password"
-    rr <- getRequest
-    (_, files) <- liftIO $ reqRequestBody rr
+    (_, files) <- runRequestBody
     content <-
         case lookup "file" files of
             Nothing -> error "No file upload found"
@@ -211,10 +213,10 @@ main = do
     run (port args) app'
 
 onlyLocal app req =
-    if remoteHost req `elem` ["127.0.0.1", "::1", "localhost"]
+    if takeWhile (/= ':') (show $ remoteHost req) `elem` ["127.0.0.1", "localhost"]
         then app req
-        else return $ Response status403 [("Content-Type", "text/plain")]
-                    $ ResponseLBS "This Yackage server only talks to local clients"
+        else return $ responseLBS status403 [("Content-Type", "text/plain")]
+                    "This Yackage server only talks to local clients"
 
 unPackageName (PackageName s) = s
 

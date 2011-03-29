@@ -33,6 +33,7 @@ Executable yackage
                      , wai
                      , transformers
                      , hamlet
+                     , yesod-form
 
 Executable yackage-upload
   Main-is:             yackage-upload.hs
