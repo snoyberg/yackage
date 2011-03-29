@@ -1,7 +1,13 @@
 {-# LANGUAGE OverloadedStrings, TypeFamilies, QuasiQuotes #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE TemplateHaskell #-}
-import Yesod
+import Yesod.Core
+import Yesod.Dispatch
+import Yesod.Handler
+import Yesod.Widget
+import Yesod.Content
+import Text.Hamlet
+import Control.Monad.IO.Class (liftIO)
 import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Parse
@@ -29,7 +35,7 @@ import Data.Object.Yaml
 import Control.Monad (join, unless)
 import System.Console.CmdArgs
 import Network.Wai
-import Network.Wai.Handler.SimpleServer (run)
+import Network.Wai.Handler.Warp (run)
 
 data Args = Args
     { port :: Int
