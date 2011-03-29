@@ -18,7 +18,7 @@ import Distribution.Version
 import Data.Version
 import qualified Data.Map as Map
 import Data.Map (Map)
-import Text.ParserCombinators.ReadP
+import Text.ParserCombinators.ReadP hiding (string)
 import System.Directory
 import System.Environment
 import Data.Set (Set, toAscList)
@@ -45,6 +45,7 @@ data Args = Args
     , password :: Maybe String
     , localhost :: Bool
     , rootdir :: Maybe String
+    , title :: String
     } deriving (Show, Data, Typeable)
 
 type CabalFile = FilePath
@@ -54,6 +55,7 @@ data Yackage = Yackage
     { rootDir :: FilePath
     , packages :: MVar PackageDB
     , ypassword :: Maybe String
+    , ytitle :: String
     }
 
 type PackageDB = Map PackageName (Set Version)
@@ -107,7 +109,7 @@ getRootR = do
     y <- getYesod
     ps <- getYesod >>= liftIO . readMVar . packages >>= return . Map.toList
     defaultLayout $ do
-        setTitle "Yackage"
+        setTitle $ string $ ytitle y
         addHamlet [$hamlet|\
 <h1>Yackage
 <form method="post" enctype="multipart/form-data">
@@ -195,6 +197,7 @@ main = do
         , password = Nothing &= help "Optional password required to upload files"
         , localhost = False &= help "Only allow connections from localhost?"
         , rootdir = Nothing &= help "Root folder for Yackage config file and packages"
+        , title = "Yackage" &= help "Page title displayed in browser"
         } &= program progname &= summary "Run a Yackage server"
     path <-
         case rootdir args of
@@ -207,7 +210,7 @@ main = do
             then parseConfig `fmap` join (decodeFile config)
             else return $ Map.empty
     m' <- liftIO $ newMVar m
-    app <- toWaiApp $ Yackage path m' $ password args
+    app <- toWaiApp $ Yackage path m' (password args) (title args)
     let app' = if localhost args then onlyLocal app else app
     putStrLn $ "Running Yackage on port " ++ show (port args) ++ ", rootdir: " ++ path
     run (port args) app'
