@@ -38,7 +38,7 @@ import Data.Object.Yaml
 import Control.Monad (join, unless)
 import System.Console.CmdArgs
 import Network.Wai
-import Network.Wai.Handler.Warp (run)
+import Network.Wai.Handler.Warp (runSettings, defaultSettings, settingsPort, settingsHost)
 import Network.HTTP.Types (status403)
 import qualified Data.Text as T
 
@@ -213,16 +213,11 @@ main = do
             else return $ Map.empty
     m' <- liftIO $ newMVar m
     app <- toWaiApp $ Yackage path m' (password args) (title args)
-    let app' = if localhost args then onlyLocal app else app
     putStrLn $ "Running Yackage on port " ++ show (port args) ++ ", rootdir: " ++ path
-    run (port args) app'
-
-onlyLocal app req =
-    if takeWhile (/= ':') (show $ remoteHost req) `elem` ["127.0.0.1", "localhost"]
-        || takeWhile (/= ']') (show $ remoteHost req) == "[::1"
-        then app req
-        else return $ responseLBS status403 [("Content-Type", "text/plain")]
-                    "This Yackage server only talks to local clients"
+    runSettings defaultSettings
+        { settingsPort = port args
+        , settingsHost = if localhost args then "127.0.0.1" else "*"
+        } app
 
 unPackageName (PackageName s) = s
 
