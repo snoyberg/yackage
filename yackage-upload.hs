@@ -14,7 +14,7 @@ main = do
                 [x, y] -> (x, "", y)
                 [x, y, z] -> (x, y, z)
                 _ -> error "Usage: yackage-upload <url> [password] <file>"
-    req <- parseUrl $ S8.pack url
+    req <- parseUrl url
     body <- mkBody pass file
     let req' = req
             { method = "POST"

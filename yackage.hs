@@ -39,6 +39,8 @@ import Control.Monad (join, unless)
 import System.Console.CmdArgs
 import Network.Wai
 import Network.Wai.Handler.Warp (run)
+import Network.HTTP.Types (status403)
+import qualified Data.Text as T
 
 data Args = Args
     { port :: Int
@@ -70,16 +72,16 @@ tarballR :: PackageName -> Version -> YackageRoute
 tarballR pn v = TarballR $ tarballName pn v
 
 tarballName pn v = concat
-    [ toSinglePiece pn
+    [ T.unpack $ toSinglePiece pn
     , "-"
-    , toSinglePiece v
+    , T.unpack $ toSinglePiece v
     , ".tar.gz"
     ]
 
 cabalName pn v = concat
-    [ toSinglePiece pn
+    [ T.unpack $ toSinglePiece pn
     , "-"
-    , toSinglePiece v
+    , T.unpack $ toSinglePiece v
     , ".cabal"
     ]
 
@@ -87,20 +89,20 @@ tarballPath pn v = do
     rd <- rootDir `fmap` getYesod
     return $ concat
         [ rd
-        , '/' : toSinglePiece pn
-        , '/' : toSinglePiece v
+        , '/' : T.unpack (toSinglePiece pn)
+        , '/' : T.unpack (toSinglePiece v)
         ]
 
 instance Yesod Yackage where approot _ = ""
 instance SinglePiece Version where
     fromSinglePiece s =
-        case filter (\(_, y) -> null y) $ readP_to_S parseVersion s of
-            [] -> Left "Invalid version"
-            (x, ""):_ -> Right x
-    toSinglePiece = showVersion
+        case filter (\(_, y) -> null y) $ readP_to_S parseVersion $ T.unpack s of
+            [] -> Nothing
+            (x, ""):_ -> Just x
+    toSinglePiece = T.pack . showVersion
 instance SinglePiece PackageName where
-    fromSinglePiece = Right . PackageName
-    toSinglePiece = unPackageName
+    fromSinglePiece = Just . PackageName . T.unpack
+    toSinglePiece = T.pack . unPackageName
 
 type Handler = GHandler Yackage Yackage
 
@@ -111,7 +113,7 @@ getRootR = do
     defaultLayout $ do
         setTitle $ string $ ytitle y
         addHamlet [$hamlet|\
-<h1>Yackage
+<h1>#{ytitle y}
 <form method="post" enctype="multipart/form-data">
     <div>
         \Upload a new file: 
@@ -137,7 +139,7 @@ postRootR = do
         Nothing -> return ()
         Just p -> do
             p' <- runFormPost' $ maybeStringInput "password"
-            unless (Just p == p') $ permissionDenied "Invalid password"
+            unless (Just (T.pack p) == p') $ permissionDenied "Invalid password"
     (_, files) <- runRequestBody
     content <-
         case lookup "file" files of
@@ -217,6 +219,7 @@ main = do
 
 onlyLocal app req =
     if takeWhile (/= ':') (show $ remoteHost req) `elem` ["127.0.0.1", "localhost"]
+        || takeWhile (/= ']') (show $ remoteHost req) == "[::1"
         then app req
         else return $ responseLBS status403 [("Content-Type", "text/plain")]
                     "This Yackage server only talks to local clients"
@@ -242,8 +245,8 @@ rebuildIndex ps = do
     go path (name, vs) = map (go' path name) $ Set.toList vs
     go' path name version = concat
         [ path
-        , '/' : toSinglePiece name
-        , '/' : toSinglePiece version
+        , '/' : T.unpack (toSinglePiece name)
+        , '/' : T.unpack (toSinglePiece version)
         , '/' : cabalName name version
         ]
 
@@ -266,11 +269,11 @@ parseConfig o = fromMaybe (error "Invalid config file") $ do
   where
     go :: (String, Object String String) -> Maybe (PackageName, Set Version)
     go (name, vs) = do
-        Right name' <- return $ fromSinglePiece name
+        Just name' <- return $ fromSinglePiece $ T.pack name
         vs' <- fromSequence vs
         vs'' <- mapM go' vs'
         return (name', Set.fromList vs'')
     go' s = do
         s' <- fromScalar s
-        Right x <- return $ fromSinglePiece s'
+        let Just x = fromSinglePiece $ T.pack s'
         return x
