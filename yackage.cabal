@@ -42,7 +42,7 @@ Executable yackage
                          , wai
                          , transformers
                          , hamlet
-                         , yesod-form
+                         , yesod-form >= 0.2 && < 0.3
                          , http-types >= 0.6 && < 0.7
   else
     Buildable: False

@@ -133,12 +133,15 @@ getRootR = do
                 \ 
 |]
 
+instance RenderMessage Yackage FormMessage where
+    renderMessage _ _ = defaultFormMessage
+
 postRootR = do
     y <- getYesod
     case ypassword y of
         Nothing -> return ()
         Just p -> do
-            p' <- runFormPost' $ maybeStringInput "password"
+            p' <- runInputPost $ iopt textField "password"
             unless (Just (T.pack p) == p') $ permissionDenied "Invalid password"
     (_, files) <- runRequestBody
     content <-
