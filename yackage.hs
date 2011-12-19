@@ -2,15 +2,9 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+import Yesod
 import Yesod.Core
 import Yesod.Dispatch
-import Yesod.Handler
-import Yesod.Widget
-import Yesod.Content
-import Yesod.Form
-import Yesod.Request
-import Text.Hamlet
-import Control.Monad.IO.Class (liftIO)
 import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Parse
@@ -37,9 +31,7 @@ import Data.Object
 import Data.Object.Yaml
 import Control.Monad (join, unless)
 import System.Console.CmdArgs
-import Network.Wai
 import Network.Wai.Handler.Warp (runSettings, defaultSettings, settingsPort, settingsHost)
-import Network.HTTP.Types (status403)
 import qualified Data.Text as T
 
 data Args = Args
@@ -104,14 +96,14 @@ instance SinglePiece PackageName where
     fromSinglePiece = Just . PackageName . T.unpack
     toSinglePiece = T.pack . unPackageName
 
-type Handler = GHandler Yackage Yackage
+type YHandler = GHandler Yackage Yackage
 
-getRootR :: Handler RepHtml
+getRootR :: YHandler RepHtml
 getRootR = do
     y <- getYesod
     ps <- getYesod >>= liftIO . readMVar . packages >>= return . Map.toList
     defaultLayout $ do
-        setTitle $ string $ ytitle y
+        setTitle $ toHtml $ ytitle y
         addHamlet [$hamlet|\
 <h1>#{ytitle y}
 <form method="post" enctype="multipart/form-data">
