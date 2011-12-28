@@ -41,6 +41,7 @@ import Network.Wai
 import Network.Wai.Handler.Warp (runSettings, defaultSettings, settingsPort, settingsHost)
 import Network.HTTP.Types (status403)
 import qualified Data.Text as T
+import Text.Blaze (toHtml)
 
 data Args = Args
     { port :: Int
@@ -104,14 +105,12 @@ instance SinglePiece PackageName where
     fromSinglePiece = Just . PackageName . T.unpack
     toSinglePiece = T.pack . unPackageName
 
-type Handler = GHandler Yackage Yackage
-
 getRootR :: Handler RepHtml
 getRootR = do
     y <- getYesod
     ps <- getYesod >>= liftIO . readMVar . packages >>= return . Map.toList
     defaultLayout $ do
-        setTitle $ string $ ytitle y
+        setTitle $ toHtml $ ytitle y
         addHamlet [$hamlet|\
 <h1>#{ytitle y}
 <form method="post" enctype="multipart/form-data">
