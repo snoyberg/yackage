@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 import Yesod.Core
 import Yesod.Dispatch
 import Yesod.Handler
@@ -17,6 +18,7 @@ import Distribution.PackageDescription.Parse
 import Distribution.Version
 import Data.Version
 import qualified Data.Map as Map
+import qualified Data.HashMap.Strict as HMap
 import Data.Map (Map)
 import Text.ParserCombinators.ReadP hiding (string)
 import System.Directory
@@ -33,8 +35,7 @@ import Data.Text.Lazy.Encoding (decodeUtf8With)
 import Data.Text.Encoding.Error (lenientDecode)
 import qualified Data.ByteString.Lazy as L
 import Data.Maybe (fromMaybe)
-import Data.Object
-import Data.Object.Yaml
+import Data.Yaml
 import Control.Monad (join, unless)
 import System.Console.CmdArgs
 import Network.Wai
@@ -42,6 +43,7 @@ import Network.Wai.Handler.Warp (runSettings, defaultSettings, settingsPort, set
 import Network.HTTP.Types (status403)
 import qualified Data.Text as T
 import Text.Blaze (toHtml)
+import qualified Data.Vector as Vector
 
 data Args = Args
     { port :: Int
@@ -63,26 +65,26 @@ data Yackage = Yackage
 
 type PackageDB = Map PackageName (Set Version)
 
-mkYesod "Yackage" [$parseRoutes|
+mkYesod "Yackage" [parseRoutes|
 / RootR GET POST
 /00-index.tar.gz IndexR GET
 /package/#String TarballR GET
 |]
 
-tarballR :: PackageName -> Version -> YackageRoute
+tarballR :: PackageName -> Version -> Route Yackage
 tarballR pn v = TarballR $ tarballName pn v
 
 tarballName pn v = concat
-    [ T.unpack $ toSinglePiece pn
+    [ T.unpack $ toPathPiece pn
     , "-"
-    , T.unpack $ toSinglePiece v
+    , T.unpack $ toPathPiece v
     , ".tar.gz"
     ]
 
 cabalName pn v = concat
-    [ T.unpack $ toSinglePiece pn
+    [ T.unpack $ toPathPiece pn
     , "-"
-    , T.unpack $ toSinglePiece v
+    , T.unpack $ toPathPiece v
     , ".cabal"
     ]
 
@@ -90,20 +92,20 @@ tarballPath pn v = do
     rd <- rootDir `fmap` getYesod
     return $ concat
         [ rd
-        , '/' : T.unpack (toSinglePiece pn)
-        , '/' : T.unpack (toSinglePiece v)
+        , '/' : T.unpack (toPathPiece pn)
+        , '/' : T.unpack (toPathPiece v)
         ]
 
-instance Yesod Yackage where approot _ = ""
-instance SinglePiece Version where
-    fromSinglePiece s =
+instance Yesod Yackage
+instance PathPiece Version where
+    fromPathPiece s =
         case filter (\(_, y) -> null y) $ readP_to_S parseVersion $ T.unpack s of
             [] -> Nothing
             (x, ""):_ -> Just x
-    toSinglePiece = T.pack . showVersion
-instance SinglePiece PackageName where
-    fromSinglePiece = Just . PackageName . T.unpack
-    toSinglePiece = T.pack . unPackageName
+    toPathPiece = T.pack . showVersion
+instance PathPiece PackageName where
+    fromPathPiece = Just . PackageName . T.unpack
+    toPathPiece = T.pack . unPackageName
 
 getRootR :: Handler RepHtml
 getRootR = do
@@ -111,7 +113,7 @@ getRootR = do
     ps <- getYesod >>= liftIO . readMVar . packages >>= return . Map.toList
     defaultLayout $ do
         setTitle $ toHtml $ ytitle y
-        addHamlet [$hamlet|\
+        addHamlet [hamlet|
 <h1>#{ytitle y}
 <form method="post" enctype="multipart/form-data">
     <div>
@@ -128,7 +130,7 @@ getRootR = do
         <dt>#{unPackageName (fst p)}
         <dd>
             $forall v <- toAscList (snd p)
-                <a href="@{tarballR (fst p) v}">#{toSinglePiece v}
+                <a href="@{tarballR (fst p) v}">#{toPathPiece v}
                 \ 
 |]
 
@@ -175,7 +177,7 @@ postRootR = do
     liftIO $ putMVar mpackages ps'
 
     setMessage "Package uploaded"
-    redirect RedirectTemporary RootR
+    redirect RootR
     return ()
   where
     getCabal Done = error "No cabal file"
@@ -210,9 +212,11 @@ main = do
     createDirectoryIfMissing True $ path ++ "/package"
     let config = path ++ "/config.yaml"
     e <- doesFileExist config
-    m <- if e
-            then parseConfig `fmap` join (decodeFile config)
-            else return $ Map.empty
+    mMay <-
+        if e
+            then decodeFile config
+            else return $ Just Map.empty
+    m <- maybe (error "Invalid Yackage config file") return mMay
     m' <- liftIO $ newMVar m
     app <- toWaiApp $ Yackage path m' (password args) (title args)
     putStrLn $ "Running Yackage on port " ++ show (port args) ++ ", rootdir: " ++ path
@@ -242,8 +246,8 @@ rebuildIndex ps = do
     go path (name, vs) = map (go' path name) $ Set.toList vs
     go' path name version = concat
         [ path
-        , '/' : T.unpack (toSinglePiece name)
-        , '/' : T.unpack (toSinglePiece version)
+        , '/' : T.unpack (toPathPiece name)
+        , '/' : T.unpack (toPathPiece version)
         , '/' : cabalName name version
         ]
 
@@ -253,24 +257,22 @@ writeConfig ps = do
     liftIO $ encodeFile config $ encodeConfig ps
 
 encodeConfig =
-    Mapping . map go . Map.toList
+    object . map go . Map.toList
   where
-    go (pn, vs) = (toSinglePiece pn, Sequence $ map go' $ Set.toList vs)
-    go' = Scalar . toSinglePiece
+    go (pn, vs) = toPathPiece pn .= array (map go' $ Set.toList vs)
+    go' = String . toPathPiece
 
-parseConfig :: Object String String -> PackageDB
-parseConfig o = fromMaybe (error "Invalid config file") $ do
-    m <- fromMapping o
-    m' <- mapM go m
-    return $ Map.fromList m'
-  where
-    go :: (String, Object String String) -> Maybe (PackageName, Set Version)
-    go (name, vs) = do
-        Just name' <- return $ fromSinglePiece $ T.pack name
-        vs' <- fromSequence vs
-        vs'' <- mapM go' vs'
-        return (name', Set.fromList vs'')
-    go' s = do
-        s' <- fromScalar s
-        let Just x = fromSinglePiece $ T.pack s'
-        return x
+instance FromJSON PackageDB where
+    parseJSON (Object o) = do
+        fmap Map.fromList $ mapM go $ HMap.toList o
+      where
+        go (name, Array vs) = do
+            Just name' <- return $ fromPathPiece name
+            vs'' <- mapM go' $ Vector.toList vs
+            return (name', Set.fromList vs'')
+        go _ = fail "parseConfig.go"
+        go' (String s) = do
+            Just x <- return $ fromPathPiece s
+            return x
+        go' _ = fail "parseConfig.go'"
+    parseJSON _ = fail "parseConfig"

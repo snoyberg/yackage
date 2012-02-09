@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-import Network.HTTP.Enumerator
+import Network.HTTP.Conduit
 import System.Environment
 import qualified Data.ByteString.Lazy as L
 import Blaze.ByteString.Builder
@@ -25,7 +25,7 @@ main = do
             , requestBody = RequestBodyLBS body
             }
     res <- withManager $ httpLbs req'
-    L.putStrLn $ responseBody res
+    return ()
 
 bound = "YACKAGEUPLOAD"
 

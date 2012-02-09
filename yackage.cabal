@@ -1,5 +1,5 @@
 Name:                yackage
-Version:             0.3.0
+Version:             0.4.0
 Synopsis:            Personal Hackage replacement for testing new packages.
 Description:
     This package installs a yackage executable that runs a simplistic hackage-like server. It allows you to upload packages produced via cabal sdist and install them via cabal. The trick is to add the yackage repository to your cabal config file, with a line such as:
@@ -22,8 +22,8 @@ flag upload
 Executable yackage
   Main-is:             yackage.hs
   Build-depends:       base >= 4 && < 5
-                     , yesod-core >= 0.9 && < 0.10
-                     , warp < 1.0
+                     , yesod-core >= 0.10 && < 0.11
+                     , warp >= 1.1 && < 1.2
                      , Cabal
                      , bytestring
                      , text
@@ -31,21 +31,22 @@ Executable yackage
                      , tar
                      , containers
                      , directory
-                     , data-object
-                     , data-object-yaml
+                     , yaml
                      , cmdargs
-                     , wai < 1.0
+                     , wai >= 1.1 && < 1.2
                      , transformers
                      , hamlet
-                     , yesod-form >= 0.3 && < 0.4
+                     , yesod-form >= 0.4 && < 0.5
                      , http-types >= 0.6 && < 0.7
                      , blaze-html
+                     , vector
+                     , unordered-containers
 
 Executable yackage-upload
   Main-is:             yackage-upload.hs
   if flag(upload)
       Build-depends:       base >= 4 && < 5
-                         , http-enumerator >= 0.6 && < 0.9
+                         , http-conduit >= 1.2 && < 1.3
                          , blaze-builder >= 0.2.1.3 && < 0.4
                          , bytestring
   else
