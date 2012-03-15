@@ -9,11 +9,12 @@ import qualified Data.ByteString.Char8 as S8
 
 main = do
     args <- getArgs
-    let (url, pass, file) =
+    let (file, url, pass) =
             case args of
-                [x, y] -> (x, "", y)
+                [x] -> (x, "http://localhost:3500/", "")
+                [x, y] -> (x, y, "")
                 [x, y, z] -> (x, y, z)
-                _ -> error "Usage: yackage-upload <url> [password] <file>"
+                _ -> error "Usage: yackage-upload <file> [url] [password]"
     req <- parseUrl url
     body <- mkBody pass file
     let req' = req
