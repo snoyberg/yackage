@@ -184,7 +184,7 @@ postRootR = do
     getCabal (Next entry rest)
         | reverse (take 6 $ reverse $ entryPath entry) == ".cabal" = entryContent entry
         | otherwise = getCabal rest
-    getCabal (Fail s) = error $ "Invalid tarball: " ++ s
+    getCabal (Fail s) = error $ "Invalid tarball: " ++ show s
 
 getIndexR = do
     path <- rootDir `fmap` getYesod
