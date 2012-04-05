@@ -113,7 +113,7 @@ getRootR = do
     ps <- getYesod >>= liftIO . readMVar . packages >>= return . Map.toList
     defaultLayout $ do
         setTitle $ toHtml $ ytitle y
-        addHamlet [hamlet|
+        toWidget [hamlet|
 <h1>#{ytitle y}
 <form method="post" enctype="multipart/form-data">
     <div>
