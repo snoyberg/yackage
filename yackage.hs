@@ -3,6 +3,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
 import Yesod.Core
 import Yesod.Dispatch
 import Yesod.Handler
@@ -42,7 +43,7 @@ import Network.Wai
 import Network.Wai.Handler.Warp (runSettings, defaultSettings, settingsPort, settingsHost)
 import Network.HTTP.Types (status403)
 import qualified Data.Text as T
-import Text.Blaze (toHtml)
+import Text.Blaze.Html (toHtml)
 import qualified Data.Vector as Vector
 
 data Args = Args
