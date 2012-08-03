@@ -45,6 +45,8 @@ import Network.HTTP.Types (status403)
 import qualified Data.Text as T
 import Text.Blaze.Html (toHtml)
 import qualified Data.Vector as Vector
+import Data.Conduit (($$))
+import Data.Conduit.List (consume)
 
 data Args = Args
     { port :: Int
@@ -149,7 +151,7 @@ postRootR = do
     content <-
         case lookup "file" files of
             Nothing -> error "No file upload found"
-            Just fi -> return $ fileContent fi
+            Just fi -> fmap L.fromChunks $ lift $ fileSource fi $$ consume
     let entries = Tar.read $ decompress content
     let cabal =
             case getCabal entries of
