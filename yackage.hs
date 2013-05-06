@@ -5,12 +5,7 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
 import Yesod.Core
-import Yesod.Dispatch
-import Yesod.Handler
-import Yesod.Widget
-import Yesod.Content
 import Yesod.Form
-import Yesod.Request
 import Text.Hamlet
 import Control.Monad.IO.Class (liftIO)
 import Distribution.Package
@@ -36,7 +31,7 @@ import Data.Text.Lazy.Encoding (decodeUtf8With)
 import Data.Text.Encoding.Error (lenientDecode)
 import qualified Data.ByteString.Lazy as L
 import Data.Maybe (fromMaybe)
-import Data.Yaml
+import Data.Yaml hiding (array)
 import Control.Monad (join, unless)
 import System.Console.CmdArgs
 import Network.Wai
@@ -151,7 +146,7 @@ postRootR = do
     content <-
         case lookup "file" files of
             Nothing -> error "No file upload found"
-            Just fi -> fmap L.fromChunks $ lift $ fileSource fi $$ consume
+            Just fi -> fmap L.fromChunks $ fileSource fi $$ consume
     let entries = Tar.read $ decompress content
     let cabal =
             case getCabal entries of
