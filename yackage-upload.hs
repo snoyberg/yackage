@@ -21,7 +21,6 @@ main = do
             { method = "POST"
             , requestHeaders =
                 [ ("Content-Type", "multipart/form-data; boundary=" `S8.append` bound)
-                , ("Content-Length", S8.pack $ show $ L.length body)
                 ]
             , requestBody = RequestBodyLBS body
             }
