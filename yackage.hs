@@ -241,9 +241,9 @@ rebuildIndex ps = do
             else fp
       where
         path' = path ++ "/"
-    cabals path = concatMap (go path) $ Map.toList ps
-    go path (name, vs) = map (go' path name) $ Set.toList vs
-    go' path name version = concat
+    cabals path = concatMap go $ Map.toList ps
+    go (name, vs) = map (go' name) $ Set.toList vs
+    go' name version = concat
         [ T.unpack (toPathPiece name)
         , '/' : T.unpack (toPathPiece version)
         , '/' : cabalName name version
