@@ -1,5 +1,5 @@
 Name:                yackage
-Version:             0.7.0.7
+Version:             0.7.0.8
 Synopsis:            Personal Hackage replacement for testing new packages.
 description:         Hackage documentation generation is not reliable. For up to date documentation, please see: <http://www.stackage.org/package/yackage>.
 Homepage:            http://github.com/snoyberg/yackage

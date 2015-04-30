@@ -4,6 +4,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ViewPatterns #-}
 import Yesod.Core
 import Yesod.Form
@@ -104,7 +105,7 @@ instance PathPiece Version where
     toPathPiece = T.pack . showVersion
 instance PathPiece PackageName where
     fromPathPiece = Just . PackageName . T.unpack
-    toPathPiece = T.pack . unPackageName
+    toPathPiece = T.pack . unPackageName'
 
 getRootR :: Handler RepHtml
 getRootR = do
@@ -126,7 +127,7 @@ getRootR = do
         <input type="submit" value="Upload">
 <dl>
     $forall p <- ps
-        <dt>#{unPackageName (fst p)}
+        <dt>#{unPackageName' (fst p)}
         <dd>
             $forall v <- toAscList (snd p)
                 <a href="@{tarballR (fst p) v}">#{toPathPiece v}
@@ -224,7 +225,7 @@ main = do
         , settingsHost = if localhost args then "127.0.0.1" else "*"
         } app
 
-unPackageName (PackageName s) = s
+unPackageName' (PackageName s) = s
 
 rebuildIndex ps = do
     path <- rootDir `fmap` getYesod
