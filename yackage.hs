@@ -37,7 +37,7 @@ import Data.Yaml hiding (array)
 import Control.Monad (join, unless)
 import System.Console.CmdArgs
 import Network.Wai
-import Network.Wai.Handler.Warp (runSettings, defaultSettings, settingsPort, settingsHost)
+import Network.Wai.Handler.Warp (runSettings, defaultSettings, setPort, setHost)
 import Network.HTTP.Types (status403)
 import qualified Data.Text as T
 import Text.Blaze.Html (toHtml)
@@ -220,10 +220,10 @@ main = do
     m' <- liftIO $ newMVar m
     app <- toWaiApp $ Yackage path m' (password args) (title args)
     putStrLn $ "Running Yackage on port " ++ show (port args) ++ ", rootdir: " ++ path
-    runSettings defaultSettings
-        { settingsPort = port args
-        , settingsHost = if localhost args then "127.0.0.1" else "*"
-        } app
+    runSettings
+        ( setPort (port args)
+        $ setHost (if localhost args then "127.0.0.1" else "*")
+          defaultSettings) app
 
 unPackageName' (PackageName s) = s
 
