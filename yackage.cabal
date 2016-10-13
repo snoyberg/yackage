@@ -1,5 +1,5 @@
 Name:                yackage
-Version:             0.8.0
+Version:             0.8.1
 Synopsis:            Personal Hackage replacement for testing new packages.
 description:         Hackage documentation generation is not reliable. For up to date documentation, please see: <http://www.stackage.org/package/yackage>.
 Homepage:            http://github.com/snoyberg/yackage
@@ -29,6 +29,7 @@ Executable yackage
                      , containers
                      , directory
                      , yaml
+                     , aeson
                      , cmdargs
                      , wai >= 1.4
                      , transformers

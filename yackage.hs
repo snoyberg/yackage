@@ -6,6 +6,9 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 import Yesod.Core
 import Yesod.Form
 import Text.Hamlet
@@ -44,6 +47,9 @@ import Text.Blaze.Html (toHtml)
 import qualified Data.Vector as Vector
 import Data.Conduit (($$))
 import Data.Conduit.List (consume)
+#if MIN_VERSION_aeson(1,0,0)
+import qualified Data.Aeson as A
+#endif
 
 data Args = Args
     { port :: Int
@@ -261,6 +267,10 @@ encodeConfig =
     go (pn, vs) = toPathPiece pn .= array (map go' $ Set.toList vs)
     go' = String . toPathPiece
 
+#if MIN_VERSION_aeson(1,0,0)
+deriving instance FromJSON PackageName
+deriving instance A.FromJSONKey PackageName
+#else
 instance FromJSON PackageDB where
     parseJSON (Object o) = do
         fmap Map.fromList $ mapM go $ HMap.toList o
@@ -275,3 +285,4 @@ instance FromJSON PackageDB where
             return x
         go' _ = fail "parseConfig.go'"
     parseJSON _ = fail "parseConfig"
+#endif
